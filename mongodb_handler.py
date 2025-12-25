@@ -22,13 +22,28 @@ class MongoDBHandler:
         self.database_name = database_name or os.getenv("DATABASE_NAME", "pdf_data")
         
         try:
-            self.client = MongoClient(self.mongodb_uri)
+            print(f"Connecting to MongoDB at {self.mongodb_uri}...")
+            # Add connection timeout to prevent hanging (5 seconds)
+            self.client = MongoClient(self.mongodb_uri, serverSelectionTimeoutMS=5000)
             self.db = self.client[self.database_name]
             # Test connection
             self.client.admin.command('ping')
             print(f"Connected to MongoDB: {self.database_name}")
         except Exception as e:
-            raise Exception(f"Failed to connect to MongoDB: {str(e)}")
+            error_msg = str(e)
+            # Check for common connection errors
+            if "connection refused" in error_msg.lower() or "errno 111" in error_msg.lower():
+                raise Exception(
+                    f"Failed to connect to MongoDB at {self.mongodb_uri}. "
+                    f"MongoDB is not running or not accessible. Please start MongoDB or check your connection settings."
+                )
+            elif "timeout" in error_msg.lower():
+                raise Exception(
+                    f"Connection to MongoDB at {self.mongodb_uri} timed out. "
+                    f"Make sure MongoDB is running and accessible."
+                )
+            else:
+                raise Exception(f"Failed to connect to MongoDB: {error_msg}")
     
     def insert_records(self, collection_name: str, records: List[Dict[str, Any]]) -> int:
         """

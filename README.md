@@ -1,13 +1,14 @@
-# PDF to MongoDB Converter
+# PDF to MongoDB/JSON Converter
 
-A tool that extracts structured data from PDFs based on keyword patterns and stores it in MongoDB.
+A tool that extracts structured data from PDFs based on keyword patterns and stores it in MongoDB or JSON files.
 
 ## Features
 
 - Extract structured data from PDF files based on customizable keyword patterns
 - Process single or multiple PDFs from a directory
-- Store extracted data in MongoDB collections
+- Store extracted data in MongoDB collections or JSON files
 - Flexible pattern matching for various data formats
+- No MongoDB required when using JSON output mode
 
 ## Installation
 
@@ -17,19 +18,27 @@ pip install -r requirements.txt
 
 ## Configuration
 
-Create a `.env` file in the project root:
+**For MongoDB output only:** Create a `.env` file in the project root:
 
 ```
 MONGODB_URI=mongodb://localhost:27017/
 DATABASE_NAME=pdf_data
 ```
 
+**Note:** Configuration is only needed when using MongoDB output. JSON output mode doesn't require any configuration or MongoDB installation.
+
 ## Usage
 
 ### Command Line Interface
 
+**Output to MongoDB:**
 ```bash
-python main.py --pdf-dir /path/to/pdfs --keywords ID Color Model Year --collection cars
+python main.py --pdf-dir /path/to/pdfs --keywords "ID,Color,Model,Year" --collection cars
+```
+
+**Output to JSON file (no MongoDB required):**
+```bash
+python main.py --pdf-dir /path/to/pdfs --keywords "ID,Color,Model,Year" --json-file output.json
 ```
 
 ### Python API
@@ -54,7 +63,9 @@ converter.process_directory(
 1. **PDF Extraction**: Extracts text from all PDFs in the specified directory
 2. **Pattern Matching**: Searches for patterns like "ID: 1 Color: red Model: chevy Year: 2020"
 3. **Data Extraction**: Groups data by the first keyword (typically an ID) and extracts all property values
-4. **MongoDB Storage**: Stores each extracted record as a document in the specified collection
+4. **Storage**: Stores each extracted record either:
+   - In a MongoDB collection (if `--collection` is provided)
+   - In a JSON file (if `--json-file` is provided)
 
 ## Example
 
@@ -66,9 +77,11 @@ ID: 2 Color: blue Model: ford Year: 2021
 
 With keywords: `["ID", "Color", "Model", "Year"]`
 
-The tool will create MongoDB documents:
+The tool will create records (MongoDB documents or JSON array):
 ```json
-{"ID": "1", "Color": "red", "Model": "chevy", "Year": "2020"}
-{"ID": "2", "Color": "blue", "Model": "ford", "Year": "2021"}
+[
+  {"ID": "1", "Color": "red", "Model": "chevy", "Year": "2020"},
+  {"ID": "2", "Color": "blue", "Model": "ford", "Year": "2021"}
+]
 ```
 
