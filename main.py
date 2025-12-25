@@ -20,25 +20,35 @@ from pdf_to_db import PDFToDB
 )
 @click.option(
     '--collection',
-    required=True,
-    help='MongoDB collection name to store the data'
+    default=None,
+    help='MongoDB collection name to store the data (required if not using --json-file)'
+)
+@click.option(
+    '--json-file',
+    default=None,
+    type=click.Path(),
+    help='Output JSON file path (if provided, data will be written to JSON instead of MongoDB)'
 )
 @click.option(
     '--mongodb-uri',
     default=None,
-    help='MongoDB connection URI (defaults to MONGODB_URI env var)'
+    help='MongoDB connection URI (defaults to MONGODB_URI env var, ignored if --json-file is used)'
 )
 @click.option(
     '--database',
     default=None,
-    help='MongoDB database name (defaults to DATABASE_NAME env var)'
+    help='MongoDB database name (defaults to DATABASE_NAME env var, ignored if --json-file is used)'
 )
-def main(pdf_dir, keywords, collection, mongodb_uri, database):
+def main(pdf_dir, keywords, collection, json_file, mongodb_uri, database):
     """
-    Convert PDFs to MongoDB database based on keyword patterns.
+    Convert PDFs to MongoDB database or JSON file based on keyword patterns.
     
-    Example:
+    Examples:
+        # Output to MongoDB
         python main.py --pdf-dir ./pdfs --keywords "ID,Color,Model,Year" --collection cars
+        
+        # Output to JSON file
+        python main.py --pdf-dir ./pdfs --keywords "ID,Color,Model,Year" --json-file output.json
     """
     # Parse keywords
     keyword_list = [k.strip() for k in keywords.split(',')]
@@ -47,20 +57,40 @@ def main(pdf_dir, keywords, collection, mongodb_uri, database):
         click.echo("Error: At least one keyword is required.", err=True)
         sys.exit(1)
     
+    # Validate that either collection or json_file is provided
+    if not collection and not json_file:
+        click.echo("Error: Either --collection or --json-file must be provided.", err=True)
+        sys.exit(1)
+    
+    if collection and json_file:
+        click.echo("Error: Cannot use both --collection and --json-file. Choose one.", err=True)
+        sys.exit(1)
+    
     click.echo(f"Processing PDFs from: {pdf_dir}")
     click.echo(f"Keywords: {', '.join(keyword_list)}")
-    click.echo(f"Collection: {collection}")
+    
+    if json_file:
+        click.echo(f"Output: JSON file -> {json_file}")
+        use_mongodb = False
+    else:
+        click.echo(f"Output: MongoDB collection -> {collection}")
+        use_mongodb = True
     
     try:
-        converter = PDFToDB(mongodb_uri=mongodb_uri, database_name=database)
-        
-        inserted_count = converter.process_directory(
-            pdf_directory=pdf_dir,
-            keywords=keyword_list,
-            collection_name=collection
+        converter = PDFToDB(
+            mongodb_uri=mongodb_uri if use_mongodb else None,
+            database_name=database if use_mongodb else None,
+            use_mongodb=use_mongodb
         )
         
-        click.echo(f"\n✓ Successfully processed {inserted_count} records.")
+        processed_count = converter.process_directory(
+            pdf_directory=pdf_dir,
+            keywords=keyword_list,
+            collection_name=collection,
+            json_file=json_file
+        )
+        
+        click.echo(f"\n✓ Successfully processed {processed_count} records.")
         converter.close()
         
     except Exception as e:
