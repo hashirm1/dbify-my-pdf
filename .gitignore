@@ -4,6 +4,10 @@ __pycache__/
 *.py[codz]
 *$py.class
 
+# Project-specific
+test_pdfs/
+output.json
+
 # C extensions
 *.so
 
